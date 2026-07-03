@@ -6,20 +6,22 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Instalar dependencias del sistema operativo
+# Instalar dependencias base del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar todo el código del repositorio (incluyendo pyproject.toml)
+# Descargar e instalar "uv" directamente (oficial y ultra-rápido)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Copiar todo el código fuente al contenedor
 COPY . .
 
-# Instalar la aplicación y sus dependencias de forma nativa
-# Añadimos uvicorn explícitamente para garantizar que el servidor web se instale
-RUN pip install --no-cache-dir . uvicorn
+# Usar uv para instalar todas las dependencias sin fallos de compilación
+RUN uv sync
 
 EXPOSE 8082
 
-# Comando para iniciar el proxy
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8082"]
+# Ejecutar el servidor uvicorn usando el entorno nativo de uv
+CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8082"]
